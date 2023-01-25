@@ -48,13 +48,20 @@ int main() {
 	int timeStart, frameTimeMSPF;
 	double waitTime;
 	int maxParticles;
+	bool quit;
+	SDL_Event event;
     while (1) {
 		timeStart = SDL_GetTicks();
 		SDL_GetWindowSize(win, &width, &height);
 		maxParticles = (width * height) / 20000;
-		SDL_Event event;
-        if (SDL_PollEvent(&event) && event.type == SDL_QUIT)
-            break;
+		quit = false;
+        while (SDL_PollEvent(&event)) {
+			if (event.type == SDL_QUIT) {
+				quit = true;
+				break;
+			}
+		}
+		if (quit) break;
     	for (int i = 0; i < PARTICLE_MAX_LEN; ++i) {
 			if (i >= maxParticles) { particles[i].enabled = false; continue; }
 			if (!particles[i].enabled) {
