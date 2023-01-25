@@ -10,7 +10,7 @@
 #define TEXT_FG 0xcd, 0xd6, 0xf4
 #define eprintf(...) fprintf(stderr, __VA_ARGS__)
 #define strerr strerror(errno)
-#define PARTICLE_LEN 50
+#define PARTICLE_MAX_LEN 250
 #define RANGE 300
 #define MAGNITUDE 3.0
 #define FPS 60.0
@@ -21,8 +21,8 @@ struct Particle {
 	double vy;
 	int ix;
 	int iy;
-	bool a;
-} particles[PARTICLE_LEN];
+	bool enabled;
+} particles[PARTICLE_MAX_LEN];
 bool bounds(double x, double y, int w, int h) {
 	return x >= -RANGE && y >= -RANGE && x < w + RANGE && y < h + RANGE;
 }
@@ -43,17 +43,21 @@ int main() {
 		SDL_WINDOWPOS_CENTERED,
 		width, height, SDL_WINDOW_RESIZABLE);
 	SDL_Renderer* rend = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED);
-	width = 4000;
+	width = 1920; // temporary resolution before we figure out window size
+	height = 1080;
 	int timeStart, frameTimeMSPF;
 	double waitTime;
+	int maxParticles;
     while (1) {
 		timeStart = SDL_GetTicks();
 		SDL_GetWindowSize(win, &width, &height);
+		maxParticles = (width * height) / 20000;
 		SDL_Event event;
         if (SDL_PollEvent(&event) && event.type == SDL_QUIT)
             break;
-    	for (int i = 0; i < PARTICLE_LEN; ++i) {
-			if (!particles[i].a) {
+    	for (int i = 0; i < PARTICLE_MAX_LEN; ++i) {
+			if (i >= maxParticles) { particles[i].enabled = false; continue; }
+			if (!particles[i].enabled) {
 				while (1) {
 					if ((rand() & 0xff) > 0x7f) {
 						particles[i].x = (rand() & 0xff) > 0x7f ? -RANGE : (width - 1 + RANGE);
@@ -68,13 +72,17 @@ int main() {
 					particles[i].x += particles[i].vx;
 					particles[i].y += particles[i].vy;
 					if (!bounds(particles[i].x, particles[i].y, width, height)) continue;
-					particles[i].a = true;
+					particles[i].enabled = true;
 					break;
 				}
 			} else {
+				if (particles[i].vx == 0 && particles[i].vy == 0) {
+					particles[i].enabled = false;
+					continue;
+				}
 				particles[i].x += particles[i].vx;
 				particles[i].y += particles[i].vy;
-				if (!bounds(particles[i].x, particles[i].y, width, height)) particles[i].a = false;
+				if (!bounds(particles[i].x, particles[i].y, width, height)) particles[i].enabled = false;
 			}
 			particles[i].ix = (int) particles[i].x;
 			particles[i].iy = (int) particles[i].y;
@@ -82,9 +90,10 @@ int main() {
 		SDL_SetRenderDrawColor(rend, BG, 0xff);
 		SDL_RenderClear(rend);
 		SDL_SetRenderDrawColor(rend, FG, 0xff);
-    	for (int i = 0; i < PARTICLE_LEN; ++i) {
-			SDL_RenderDrawPoint(rend, particles[i].ix, particles[i].iy);
-    		for (int j = 0; j < PARTICLE_LEN; ++j) {
+    	for (int i = 0; i < PARTICLE_MAX_LEN; ++i) {
+			if (!particles[i].enabled) continue;
+    		for (int j = 0; j < PARTICLE_MAX_LEN; ++j) {
+				if (!particles[j].enabled) continue;
 				if (in_range(particles[i].ix, particles[i].iy, particles[j].ix, particles[j].iy)) {
 					SDL_RenderDrawLine(rend, particles[i].ix, particles[i].iy, particles[j].ix, particles[j].iy);
 				}
