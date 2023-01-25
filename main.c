@@ -4,12 +4,16 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_timer.h>
-#define BG 0x1e, 0x1e, 0x2e, 0xff
-#define FG 0xf5, 0xc2, 0xe7, 0xff
+#define BG 0x1e, 0x1e, 0x2e
+#define FG 0xf5, 0xc2, 0xe7
+#define TEXT_BG 0x31, 0x32, 0x44
+#define TEXT_FG 0xcd, 0xd6, 0xf4
 #define eprintf(...) fprintf(stderr, __VA_ARGS__)
 #define strerr strerror(errno)
 #define PARTICLE_LEN 50
 #define RANGE 300
+#define MAGNITUDE 3.0
+#define FPS 60.0
 struct Particle {
 	double x;
 	double y;
@@ -32,31 +36,35 @@ int main() {
 	if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
 		printf("error initializing SDL: %s\n", SDL_GetError());
 	}
+	int width = 480;
+	int height = 360;
 	SDL_Window* win = SDL_CreateWindow("particles",
 		SDL_WINDOWPOS_CENTERED,
 		SDL_WINDOWPOS_CENTERED,
-		1000, 1000, SDL_WINDOW_RESIZABLE);
+		width, height, SDL_WINDOW_RESIZABLE);
 	SDL_Renderer* rend = SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED);
+	width = 4000;
+	int timeStart, frameTimeMSPF;
+	double waitTime;
     while (1) {
-		int width = 1000;
-		int height = 1000;
+		timeStart = SDL_GetTicks();
+		SDL_GetWindowSize(win, &width, &height);
 		SDL_Event event;
         if (SDL_PollEvent(&event) && event.type == SDL_QUIT)
             break;
     	for (int i = 0; i < PARTICLE_LEN; ++i) {
 			if (!particles[i].a) {
 				while (1) {
-					if ((rand() % 256) > 127) {
-						particles[i].x = (rand() % 256) > 127 ? -RANGE : (width - 1 + RANGE);
+					if ((rand() & 0xff) > 0x7f) {
+						particles[i].x = (rand() & 0xff) > 0x7f ? -RANGE : (width - 1 + RANGE);
 						particles[i].y = (double)rand() / RAND_MAX * (height + RANGE * 2) - RANGE;
 					} else {
 						particles[i].x = (double)rand() / RAND_MAX * (width + RANGE * 2) - RANGE;
-						particles[i].y = (rand() % 256) > 127 ? -RANGE : (height - 1 + RANGE);
+						particles[i].y = (rand() & 0xff) > 0x7f ? -RANGE : (height - 1 + RANGE);
 					}
 					double theta = (double)rand() / RAND_MAX * M_PI * 2;
-					double mag = 1.5;
-					particles[i].vx = cos(theta) * mag;
-					particles[i].vy = sin(theta) * mag;
+					particles[i].vx = cos(theta) * MAGNITUDE;
+					particles[i].vy = sin(theta) * MAGNITUDE;
 					particles[i].x += particles[i].vx;
 					particles[i].y += particles[i].vy;
 					if (!bounds(particles[i].x, particles[i].y, width, height)) continue;
@@ -71,9 +79,9 @@ int main() {
 			particles[i].ix = (int) particles[i].x;
 			particles[i].iy = (int) particles[i].y;
 		}
-		SDL_SetRenderDrawColor(rend, BG);
+		SDL_SetRenderDrawColor(rend, BG, 0xff);
 		SDL_RenderClear(rend);
-		SDL_SetRenderDrawColor(rend, FG);
+		SDL_SetRenderDrawColor(rend, FG, 0xff);
     	for (int i = 0; i < PARTICLE_LEN; ++i) {
 			SDL_RenderDrawPoint(rend, particles[i].ix, particles[i].iy);
     		for (int j = 0; j < PARTICLE_LEN; ++j) {
@@ -83,7 +91,14 @@ int main() {
 			}
 		}
 		SDL_RenderPresent(rend);
-		usleep(10000);
+		SDL_Delay(10);
+		frameTimeMSPF = SDL_GetTicks() - timeStart;
+		if ((double)frameTimeMSPF < 1000.0 / FPS) {
+			waitTime = 1000.0 / FPS - (double)frameTimeMSPF;
+			SDL_Delay((int)waitTime);
+			frameTimeMSPF += waitTime;
+		}
+		printf("FPS: %i, MSPF: %i\n", 1000 / frameTimeMSPF, frameTimeMSPF);
     }
     SDL_DestroyRenderer(rend);
     SDL_DestroyWindow(win);
