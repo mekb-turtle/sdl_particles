@@ -93,6 +93,7 @@ int main() {
     	for (int i = 0; i < PARTICLE_MAX_LEN; ++i) {
 			if (!particles[i].enabled) continue;
     		for (int j = 0; j < PARTICLE_MAX_LEN; ++j) {
+				if (i == j) continue;
 				if (!particles[j].enabled) continue;
 				if (in_range(particles[i].ix, particles[i].iy, particles[j].ix, particles[j].iy)) {
 					SDL_RenderDrawLine(rend, particles[i].ix, particles[i].iy, particles[j].ix, particles[j].iy);
